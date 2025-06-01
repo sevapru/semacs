@@ -1,0 +1,8 @@
+*.gpg
+/elpa
+/history
+/transient
+/var
+/eln-cache
+/emacs-backups
+*~

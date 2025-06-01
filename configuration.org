@@ -1,0 +1,784 @@
+#+TITLE: Semacs Configuration
+#+AUTHOR: Vsevolod Prudius | Sobaka Dev
+#+EMAIL: seva@sevap.ru
+#+DATE: Friday, May 30, 2025
+#+PROPERTY: header-args:emacs-lisp :results silent
+
+* Introduction
+
+This document organizes and automatically generates the Emacs
+configuration based on experience I had at MLPrograms. Now you cannot
+find this company anymore. As well as any other things in life, it was
+temporary and after 6 years, it was closed and consumed by OpenGI.
+But we're here for the different reason, for emacs, right?
+
+The [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Init-File.html][configuration file]], typically =~/.emacs.d/init.el=, can be used to
+add UI customizations, functionalities, or settings not found in Emacs
+out-of-the-box. Organizing our configuration file in an =org-mode=
+narrative improves organization and readability. More importantly, it
+facilitates more rigorous documentation.
+
+Above all else, the goal of this narrative is to explain each line of our
+configuration file and why it is needed from my perspective.
+
+Our configuration file aims to adhear to several principles:
+  + Pretty :: cleanly written, clearly explained
+  + Lean :: preference to packages that play well with builtin packages
+  + Consistent :: experience should be as stable as possible, for as many
+    languages as possible
+  + Tramp-friendly :: packages must integrate well with tramp as ssh
+    connections are crucial
+
+Some part of text elements and code blocks here were written by Jon
+Harris or Baran Iscanli. I appreciate their work and believe in their
+bright future (as well as intellectual rights on some part of this
+configuration)
+
+* Default Init File
+
+To configure Emacs using this narrative, we must instruct Emacs to do so in the
+=init.el= file (credit: [[https:https://ryan.himmelwright.net/post/org-babel-setup/][Ryan Himmelwright]]). At a minimum, the =init.el= file must
+contain the =emacs-lisp= code in the example below. By loading this narrative,
+Emacs will configure itself by executing the =emacs-lisp= code blocks; code in
+other languages or have ~:tangle no~ will not be exported to the new =.el= file..
+
+While it is possible to include other configuration instructions in the =init.el=
+file, it is more convenient to have everything in this centralized document.
+
+You can check init.el file here
+
+* Emacs Literate Configuration
+** Startup Performance
+*** Garbage collection
+
+[[https://www.techtarget.com/searchstorage/definition/garbage-collection][Garbage collection]] (GC) ensures that a program does not exceed its memory quota
+or reach a point that it can no longer function. It also frees up developers
+from having to manually manage a program's memory, which, in turn reduces the
+potential for memory-related bugs.
+
+*** Perform GC while idling
+
+It is recommended that we perform garbage collection when not actively using
+Emacs. Therefore, we perform GC if idle for 30 seconds.(credit: [[https://emacs.stackexchange.com/questions/34342/is-there-any-downside-to-setting-gc-cons-threshold-very-high-and-collecting-ga][StackExchange]])
+
+#+begin_src emacs-lisp
+;; idle garbage collecting
+(run-with-idle-timer 30 t (lambda () (garbage-collect)))
+#+end_src
+
+** System Management
+*** Keep .Emacs.d Tidy
+
+The package [[https://github.com/emacscollective/no-littering][no-littering]] is useful for standardizing default paths used to
+store files across Emacs packages. This package creates descriptive file names
+and subdirectories when appropriate.
+
+#+begin_src emacs-lisp
+;; keep .emacs.d clean
+(use-package no-littering)
+#+end_src
+
+*** Move Automatic Customization to Separate File
+
+Emacs packages may automatically generate customization, which are then stored
+at the bottom of the =init.el= config file. To prevent the additional clutter, we
+move these customizations to a separate =automatic-settings.el= file.
+
+#+begin_src emacs-lisp
+;; keep customization settings in a temporary file
+(setq custom-file "~/.emacs.d/automatic-settings.el")
+(when (file-exists-p custom-file)
+  (load custom-file))
+#+end_src
+
+** Basic UI Modifications
+*** Remove UI Elements
+
+If you open Emacs without configurations, you will be bombarded with a start-
+and splash-screens, scratch messages, and other unwanted elements. The
+following snippet removes these elements from the GUI and replaces the initial
+scratch message when you first open Emacs.
+
+#+begin_src emacs-lisp
+;; suppress noise on startup
+(setq-default inhibit-startup-screen t
+              inhibit-splash-screen t
+              initial-scratch-message ";;Hope you have a good day!
+")
+
+;; remove unwanted elements
+(menu-bar-mode 0)   ; disable the menu bar at the top
+(when (boundp 'x-toolkit-scroll-bars)
+  (scroll-bar-mode 0))
+ ; disable visible scrollbar
+(scroll-all-mode 0) ; disable synchronized scrolling of buffers
+(tool-bar-mode 0)   ; disable the toolbar
+(tooltip-mode 0)    ; disable the tooltip
+#+end_src
+
+*** Set Indentation Style
+
+Emacs comes with a default indentation style that is not desirable. Here, we
+define the indentation style for [[https://www.gnu.org/software/emacs/manual/html_node/ccmode/][CC Mode]] and set the basic offset to =4= (credit:
+[[https://stackoverflow.com/questions/37105356/change-tab-width-in-emacs][StackOverflow]]); [[https://www.emacswiki.org/emacs/IndentingC][emacswiki]] contains an example of the change. Additionally, we
+modify the standard indent and tab behavior. Finally, TeX files ignores tabs,
+so we want to prevent using TAB to add multiple spaces when formatting a region
+(credit: [[https://www.gnu.org/software/emacs/manual/html_node/eintr/Indent-Tabs-Mode.html][gnu.org]])
+
+#+begin_src emacs-lisp
+;; set indentation style for CC mode
+(require 'cc-styles)
+
+(setq c-default-style "linux"
+      c-basic-offset 4
+      tab-width 4)
+
+;; set indentation for enriched text
+(setq-default standard-indent 4)
+
+;; use tab for auto-complete selection
+;;(setq-default tab-always-indent 'complete)
+
+;; prevent extraneous tabs -- affects TeX
+(setq-default indent-tabs-mode nil)
+#+end_src
+
+*** Tidy White Spaces
+
+It is a good idea to minimize the number of empty whitespaces in software
+files. We use the package [[https://www.emacswiki.org/emacs/WhiteSpace][Whitespace]], which is a minor mode to visualize white
+spaces (duh). The following snippet defines a number of settings and custom
+functions to visual white spaces and cleanup white spaces on saving the file.
+
+#+begin_src emacs-lisp
+;; package is minor mode to visualize white spaces
+(require 'whitespace)
+(setq-default indicate-empty-lines t)
+(setq whitespace-line-column 79
+      whitespace-style '(face trailing lines-tail empty
+                              indentation::space space-before-tab::tab))
+(global-whitespace-mode 0)
+
+;; cleanup  whitespaces on save
+(defcustom do-whitespace-cleanup t
+  "Perform 'whitespace-cleanup' on save."
+  :group 'whitespace)
+
+(make-variable-buffer-local 'do-whitespace-cleanup)
+
+(defun toggle-whitespace-cleanup ()
+  "Turn the 'whitespace-cleanup' hook on and off."
+  (interactive)
+  (setq do-whitespace-cleanup (not do-whitespace-cleanup))
+  (message "do-whitespace-cleanup set to %s" do-whitespace-cleanup))
+
+(add-hook 'before-save-hook
+          (lambda ()
+            (when do-whitespace-cleanup
+              (whitespace-cleanup))))
+
+;; dont cleanup whitespace but do delete trailing whitespace
+(add-hook 'makefile-mode-hook
+          (lambda ()
+            (setq indent-tabs-mode t
+                  do-whitespace-cleanup nil)
+            (add-hook 'before-save-hook #'delete-trailing-whitespace)))
+
+(add-hook 'prog-mode-hook (lambda () (whitespace-mode +1)))
+#+end_src
+
+*** Visual Cues
+
+Visual cues are useful for locating the cursor or parentheses pairs.
+
+#+begin_src emacs-lisp
+;; add visual bell (removes audible dinging)
+(setq visible-bell t)
+
+;; flash location of cursor when moved
+(use-package beacon
+  :config (beacon-mode 1))
+
+;; paired parentheses
+(electric-pair-mode 1)
+
+;; highlight matching parentheses
+(show-paren-mode 1)
+(setq-default show-paren-style 'parenthesis
+              show-paren-when-point-in-periphery t)
+#+end_src
+
+** Theming
+*** Theme
+
+Dark themes are shown to improve text legibility, reduce eye strain, improve
+concentration, and reduce circadian-disrupting blue light ([[https://www.wired.co.uk/article/dark-mode-chrome-android-ios-science][wired.uk]]). However,
+it may be difficult for others to see text when video sharing during a
+conference call.
+
+The following snippet makes it easy to switch between selected dark and light
+themes.
+
+#+begin_src emacs-lisp
+;; download your desired themes here
+(use-package solarized-theme :defer t)
+
+;; use to make sure themes are switched correctly
+(defun disable-all-themes ()
+  "Disable all active themes."
+  (dolist (i custom-enabled-themes)
+    (disable-theme i)))
+
+(defadvice load-theme (before disable-themes-first activate)
+  "Disable current theme(s) before loading a new one."
+  (disable-all-themes))
+
+(defun light ()
+  "Turn on light theme."
+  (interactive)
+  (load-theme 'dichromacy t))
+
+;; make a little darker for higher contrast and darklight org src blocks
+(defun dark ()
+  "Turn on dark theme."
+  (interactive)
+  (load-theme 'solarized-zenburn t))
+
+(light)
+#+end_src
+
+*** Font
+
+The custom function below makes it easy to change the size of your font.
+
+#+begin_src emacs-lisp
+(defun fonts (fontsize)
+  "Set FONTSIZE."
+  (interactive "nFont size: ")
+  ;; font for unicode characters
+  (let ((font "Symbola")
+        (size fontsize))
+    (when (member font (font-family-list))
+      (let ((fontspec (format "%s %d" font size)))
+        (set-fontset-font t 'unicode fontspec nil 'prepend)
+        (message fontspec))))
+
+  ;; general editor font
+  (let ((font "Noto Sans Mono")
+        (size fontsize))
+    (when (member font (font-family-list))
+      (let ((fontspec (format "%s %d" font size)))
+        (set-frame-font fontspec nil t)
+        (add-to-list 'default-frame-alist `(font . ,fontspec))
+        ;; (set-face-attribute 'default (selected-frame) :height 90)
+        ;; (set-face-attribute 'default nil :height 100)
+        (message fontspec)))))
+(fonts 10)
+#+end_src
+
+*** Line Numbers
+
+#+begin_src emacs-lisp
+;; show column number in modeline
+(column-number-mode t)
+
+;; uncomment to turn on line numbers everywhere
+;; (global-display-line-numbers-mode t)
+
+;; display line numbers only in prog-mode by default
+(add-hook 'prog-mode-hook 'display-line-numbers-mode)
+
+;; scale line numbers with text size
+(defun linum-scale (arg)
+  (interactive "nScale: ")
+  (set-face-attribute 'line-number nil :inherit nil :height arg))
+#+end_src
+
+*** Highlighting
+
+#+begin_src emacs-lisp
+;; highlight occurences of the same thing in buffer
+(use-package highlight-thing
+  :demand t
+  :hook ((prog-mode . highlight-thing-mode)
+         (org-mode . highlight-thing-mode))
+  :config
+  (setq highlight-thing-exclude-thing-under-point t
+        highlight-thing-case-sensitive-p t
+        highlight-thing-ignore-list
+        '("False" "True", "return", "None", "if", "else", "self",
+          "import", "from", "in", "def", "class")))
+
+;; comment out to remove highlighting on line containing point
+(global-hl-line-mode)
+#+end_src
+
+*** Name of Frame
+#+begin_src emacs-lisp
+;; change frame title to buffer name
+(setq frame-title-format
+      '("emacs: " (:eval (if (buffer-file-name)
+                             (abbreviate-file-name (buffer-file-name)) "%b"))))
+#+end_src
+
+*** Line Wrapping
+
+#+begin_src emacs-lisp
+;; enable line wrapping (otherwise will continue outside buffer)
+(global-visual-line-mode 1)
+#+end_src
+
+*** Enable Lazy Prompting
+
+We are lazy. We do not want to type "yes" or "no" responses.
+
+#+begin_src emacs-lisp
+;; lazy prompting
+(fset 'yes-or-no-p 'y-or-n-p)
+#+end_src
+
+*** Calendar Style and Formatting
+
+The following snippet changes how the calendar is generally structured and
+displayed.
+
+#+begin_src emacs-lisp
+;; calendar settings
+(setq-default
+ european-calendar-style t
+ calendar-date-style 'european
+ calendar-week-start-day 1
+
+ display-time-24hr-format t
+ display-time-day-and-date t
+ display-time-string-forms
+ '((if (and (not display-time-format) display-time-day-and-date)
+       (format-time-string "%a %b %e " now) "")
+   (format-time-string (or display-time-format
+                           (if display-time-24hr-format "%H:%M" "%-I:%M%p"))
+                       now))
+ calendar-time-display-form
+ '(24-hours ":" minutes
+            (if time-zone " (") time-zone (if time-zone ")"))
+ )
+(setq calendar-latitude 52.36547
+      calendar-longitude 4.81926
+      calendar-location-name "Amsterdam"
+      calendar-time-zone 60)
+#+end_src
+
+*** Buffer Formatting
+
+We define several configurations used across all buffers, and includes:
+  - debug setting :: ignore Lisp errors
+  - structural settings :: controls dimensions of column, paragraph
+    indentation, and message logs
+  - backup settings :: To minimize memory consumption, we enable
+    version-control and automatic deletions, and control the number of backups
+    stored for any file
+  - edit settings :: control how windows are split between file versions
+  - ibuffer settings :: [[https:https://www.emacswiki.org/emacs/IbufferMode][ibuffer]] is default Emacs package that provides a list
+    of buffers (~C-x b~). Here, we control the display of the ibuffer window and
+    add shell command functionality.
+  - auto-complete settings :: ignore case in minibuffer
+
+#+begin_src emacs-lisp
+;; misc. buffer settings
+(winner-mode 1)   ;; undo/redo window configurations
+
+(setq-default
+ ;; debug setting
+ debug-on-error nil
+
+ ;; structure settings
+ fill-column 100
+ message-log-max 2000
+
+ sentence-end-double-space nil
+ indicate-empty-lines t
+
+ ;; backup settings
+ delete-old-versions t
+ kept-new-versions 6
+ kept-old-versions 2
+ version-control t
+ vc-make-backup-files t
+ backup-directory-alist '((".*" . "~/.emacs.d/emacs-backups"))
+
+ ;; ediff settings
+ ediff-split-window-function 'split-window-horizontally
+ ediff-window-setup-function 'ediff-setup-windows-plain
+
+ ;; ibuffer settings
+ ibuffer-use-other-window t
+ ibuffer-formats
+ '((mark modified read-only locked
+         " " (name 36 36 :left :elide)
+         " " (size 9 -1 :right)
+         " " (mode 16 16 :left :elide) " " filename-and-process)
+   (mark " " (name 16 -1) " " filename))
+
+ async-shell-command-buffer 'new-buffer
+ display-buffer-alist '(("*Async Shell Command*" . (display-buffer-no-window)))
+ ibuffer-maybe-show-predicates
+ `(,(lambda (buf)
+      (or (and (string-match "^ " (buffer-name buf))
+               (null buffer-file-name))
+          (string-match ".*Async Shell Command.*" (buffer-name buf)))))
+
+ ;; auto-complete settings
+ read-buffer-completion-ignore-case t
+ read-file-name-completion-ignore-case t
+ )
+#+end_src
+
+*** Save Passwords to GPG File
+
+It is a bad idea to save your sudo passwords in a plain text file. Instead, we
+save sudo passwords as a [[https://docs.fileformat.com/misc/gpg/#:~:text=Extracting%20a%20File-,What%20is%20a%20GPG%20file%3F,is%20also%20known%20as%20PGP.][GPG]] encryption file.
+
+#+begin_src emacs-lisp
+;; prevent storage of sudo passwords in plaintext
+(setq-default
+ auth-sources '("~/.emacs.0/.authinfo.gpg")
+ auth-source-save-behavior nil
+ )
+#+end_src
+
+*** Documentation Man Page Setting
+
+The [[https:https://www.gnu.org/software/emacs/manual/html_node/emacs/Man-Page.html][manual page]] (=man page= for short) is the main form of in-line documentation
+on Unix. Emacs organizes these manuals and ~M-x man~ accesses the man page for an
+operating system command, library function or system call.
+
+The following snippet defines the width of the page and makes the manpage the
+current buffer in the current window.
+
+#+begin_src emacs-lisp
+;; man page settings
+(setq-default
+ Man-width 100
+ Man-notify-method 'pushy
+ )
+#+end_src
+
+
+*** Helpful
+
+[[https://github.com/Wilfred/helpful][Helpful]] improves accessing, reading, and contextualizing Emacs documentation.
+
+#+begin_src emacs-lisp
+;; alternative to built-in Emacs help
+(use-package helpful
+  :bind (("C-h j" . helpful-at-point)
+         ("C-h f" . helpful-callable)
+         ("C-h v" . helpful-variable)
+         ("C-h k" . helpful-key)
+         ("C-c C-d" . helpful-at-point)
+         ("C-h F" . helpful-function)))
+#+end_src
+
+*** Mouse Yanking
+
+By default, ~mouse-2~ (right click) may move the point. When using the mouse (*you
+shouldn't*), prevent ~mouse-2~ (right click) from moving the point. Additionally,
+yanking/pasting will occur at point, not where you clicked on the screen.
+
+#+begin_src emacs-lisp
+;; paste at point, not location of mouse cursor
+(setq-default mouse-yank-at-point t)
+#+end_src
+
+*** Host and Server Connections
+
+At MLP (and most companies in general), data and code were stored on servers
+instead of individual work laptops. The following snippet ensures that the
+=~/.ssh/config= contains hosts corresponding to servers.
+
+*Note:* Make sure to =mkdir -p ~/.ssh/control=, otherwise there will be errors.
+
+*Note:* The custom variable =personal-hosts= contains the names of servers currently
+used. This was previously defined manually, which requires us to
+manually add new names as MLP uses more servers (see commented out line).
+Instead, =personal-hosts= has been updated to automatically search for servers on the
+=.ssh=.
+
+#+begin_src emacs-lisp
+;; connect to server
+(defun connect-server (server env)
+  "Connect (via ssh/TRAMP) to SERVER and use the ENV python virtualenv.
+This sets your default directory to live on SERVER. Call `M-x local` to move
+back to the local machine. Note: if you don't use ssh host abbreviations, you
+can also use ie. user@sevap.ru as SERVER."
+  (interactive "sServer:
+sVirtualenv (name of directory inside ~/.virtualenvs):")
+  (setq default-directory (concat "/ssh:" server ":")
+        shell-file-name "/bin/bash"
+        python-shell-virtualenv-root (concat "~/.virtualenvs/" env)))
+
+;; create default directory
+(defun local ()
+  "Set default directory back to local, remove (potentially remote) virtualenv."
+  (interactive)
+  (setq default-directory "~/"
+        python-shell-virtualenv-root nil))
+
+;; variable contains list of servers used
+(defvar personal-hosts '("tete", "titty"))
+#+end_src
+
+** TRAMP
+
+[[https://www.gnu.org/software/tramp/][TRAMP]] (Transparent Remote Access, Multiple Protocols) is a package for
+accessing remote files. This allows us to manipulate files as if they were on
+our local machine.
+
+#+begin_src emacs-lisp
+;; tramp
+(eval-after-load "tramp"
+  `(setq tramp-default-method "ssh"
+         password-cache-expiry nil
+         remote-file-name-inhibit-cache nil
+         tramp-completion-reread-directory-timeout nil
+         tramp-use-ssh-controlmaster-options nil
+         tramp-ssh-controlmaster-options
+         (concat "-o ControlPath=~/.ssh/control/%%r@%%h:%%p "
+                 "-o ControlMaster=auto "
+                 "-o ControlPersist=yes ")))
+
+(require 'tramp)
+#+end_src
+
+** Files and Encoding
+*** Set Language Environment
+
+[[https://blog.hubspot.com/website/what-is-utf-8][UTF-8]] is central to the storage and encoding of text and files. Although other
+encoding systems exist, =utf-8= is practically a standard, at least in the West,
+and so it is important that we instruct Emacs to treat files as UTF-8 by
+default (credit: [[https://www.masteringemacs.org/article/working-coding-systems-unicode-emacs][MasteringEmacs]]).
+
+#+begin_src emacs-lisp
+;; set language environment
+(set-language-environment "UTF-8")
+(setq uniquify-buffer-name-style 'forward
+      locale-coding-system 'utf-8)
+(set-terminal-coding-system 'utf-8)
+(set-keyboard-coding-system 'utf-8)
+(set-selection-coding-system 'utf-8)
+(prefer-coding-system 'utf-8)
+(when (display-graphic-p)
+  (setq x-select-request-type '(UTF8_STRING COMPOUND_TEXT TEXT STRING)))
+#+end_src
+
+*** Auto-Revert Reloaded Images
+
+The following snippet enables Emacs to open graphic files and automatically
+updates the buffer if the image changes.
+
+#+begin_src emacs-lisp
+;; auto-revert reloaded images
+(auto-image-file-mode 1)
+(add-hook 'image-mode-hook 'auto-revert-mode)
+#+end_src
+
+** Emacs Client
+
+Emacs has the capability of running in a server mode which allows us to have a
+persistent session in Emacs that "lives" across different instances of frames
+that you open in Emacs (credit: [[https://www.youtube.com/watch?v=ZjCRxAMPdNc][SystemCrafters]]). This is advantageous for
+several reasons:
+  + Start Emacs only once :: avoid slow startup each time you open a new window
+  + Buffers persist across frames :: can open later if we close Emacs window
+
+[[https:https://www.emacswiki.org/emacs/EmacsClient][Emacs Client]] is a streamlined version of Emacs that quickly opens an Emacs GUI
+instance and connects directly to Emacs server. Systemd is a Linux services
+manager that starts a bunch of services in parallel when your laptop boots up.
+
+#+begin_src emacs-lisp
+;; allows for use of emacsclient
+(require 'server)
+(unless (server-running-p)
+  (server-start))
+#+end_src
+
+** Auto-Completion
+***  Auto-complete
+Is it stated somnewhere:
+
+CompletionUI use tooltip as completion UI, AutoComplete and CompanyMode implement by *Overlay*.
+
+Tooltip just can use in X, and overlay can use both X and console.
+
+Tooltip is slower than *overlay* when finger is very fast. 😊
+
+But overlay have align render bug with multi-byte language (such as CJK), and tooltip haven’t
+this problem.
+
+About different between AutoComplete and CompanyMode, in fact they’re very similar, but
+CompanyMode have more bug. – AndyStewart
+
+But in Emacs30.1 there is =completion-preview-mode= is being added, so there is no need to do it
+anywhere else.
+
+#+begin_src emacs-lisp
+  (setf completion-styles '(basic flex)
+              completion-auto-select t ;; Show completion on first call
+              completion-auto-help 'visible ;; Display *Completions* upon first request
+              completions-sort 'historical ;; Order based on minibuffer history
+              completions-max-height 20 ;; Limit completions to 15 (completions start at line 5)
+              completion-ignore-case t)
+
+  (completion-preview-mode)
+#+end_src
+
+*** Vertico
+
+The [[https:https://github.com/minad/vertico][vertico]] package provides a streamlined interface for minibuffer
+completions. Vertico is based on the default Emacs completion system, which
+enables all existing completion commands in Emacs to use Vertico's UI with no
+extra configuration (credit: [[https://www.youtube.com/watch?v=J0OaRy85MOo][System Crafters]]).
+
+#+begin_src emacs-lisp
+;; minibuffer completions
+(savehist-mode 1) ;; save minibuffer history for vertico
+
+(use-package vertico
+  :init
+  (vertico-mode))
+#+end_src
+
+*** Marginalia
+
+The [[https://github.com/minad/marginalia][marginalia]] package was written by the same author of Vertico and adds
+additional information to minibuffer completions (credit: [[https://www.youtube.com/watch?v=J0OaRy85MOo][System Crafters]]).
+
+#+begin_src emacs-lisp
+(use-package marginalia
+  ;; either bind `marginalia-cycle` globally or only in the minibuffer
+  :bind (("M-A" . marginalia-cycle)
+         :map minibuffer-local-map
+         ("M-A" . marginalia-cycle))
+  ;; the :init configuration is always executed (Not lazy!)
+  :init
+  ;; must be in the :init section of use-package such that the mode gets
+  ;; enabled right away. Note that this forces loading the package.
+  (marginalia-mode))
+#+end_src
+
+
+*** Orderless
+
+The [[https://github.com/oantolin/orderless][orderless]] package provides an orderless completion style using regexp. In
+other words, you only have to type a component of the path/filename to return
+the full name of the item you are looking for.
+
+#+begin_src emacs-lisp
+(use-package orderless
+  :init
+  ;; configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+
+** Spellchecking
+
+Spell checking is important for both things like narratives and git commits.
+The [[https://github.com/minad/jinx][jinx]] package is preferred over the builtin =flyspell= due to efficiency,
+keybindings, and ability to save words to a dictionary.
+
+The package uses the API of the =Enchant= library [[[https://abiword.github.io/enchant/][github/enchant]]] and only
+analyses visible text (instead of the entire buffer). The =jinx= package
+requires the following local packages to provide spell-checking. Both =enchant=
+and =pkgconf= are Arch-specific. Dictionaries are provided by =nuspell= (the
+modern version of =hunspell=). See [[https://github.com/minad/jinx][gitub/jinx]] for more details. In Arch,
+packages can be download by ~yay enchant pkgconf hunspell~.
+
+  + nunspell :: Spell-checker dictionaries
+  + enchant :: Wrapper for spelling libraries
+  + pkgconf :: Compiler; used by =jinx= to locate =enchant=
+
+Useful commands include:
+  + jinx-next / jinx-previous :: Jump to previous/next visible spelling error
+  + jinx-correct-all :: Allow user to correct all spelling errors in buffer
+nn
+*QUIRK:* Comments in =src-blocks= are only checked if viewed in an
+=org-edit-special= buffer accessed via ~C-c '~ . This is because =jinx= only
+checks text possessing specific face properties (see ~jinx-include-faces~ and
+~jinx-exclude-faces~). When coding, we are only interested in checking comments
+and docstrings; ~tree-sitter-hl-face:comment~, for example extends this
+functionality to =.py= files (see [[*Syntax Highlighting][Syntax Highlighting]]). To check a comment, we
+would need to remove =org-block= in ~jinx-exclude-faces~ at the expense of
+checking ALL of the code.
+
+#+begin_src elisp
+(use-package jinx
+  :hook (org-mode text-mode prog-mode conf-mode)
+  :bind (("C-c j c" . jinx-correct)
+         ("C-c j a" . jinx-correct-all)
+         ;; alias defined using 'jinx-correct' keybinding
+         ("C-c j d" . jinx-save-word-at-point))
+  :custom
+  ;; 'jinx-mode' only checks text possessing specific face properties like
+  ;; 'font-lock-comment-face' in 'prog-mode' for example.
+  (jinx-include-faces
+   '((yaml-mode . conf-mode)
+     (yaml-ts-mode . conf-mode)
+     ;; Only check docstrings and comments; not strings
+     (conf-mode font-lock-comment-face)
+     (prog-mode font-lock-comment-face
+                font-lock-doc-face
+                tree-sitter-hl-face:comment
+                tree-sitter-hl-face:doc)))
+
+  (jinx-languages "en_GB" "ru_RU")
+  :config
+  ;; Quickly save word-at-point to dictionary used by 'jinx'
+  (defalias 'jinx-save-word-at-point (kmacro "C-c j c @ RET"))
+
+  ;; 'jinx-correct' suggestions displayed as grid instead of long list
+  (vertico-multiform-mode 1)
+  (add-to-list 'vertico-multiform-categories
+               '(jinx grid (vertico-grid-annotate . 20))))
+#+end_src
+
+
+** Development
+*** Git
+
+Version (or source) control is the practice of tracking and managing changes to
+software code. The [[https://magit.vc/][magit]] package is a powerful text-based user interface to
+Git.
+
+To learn the fundamentals of magit, please see the following links:
+  + [[https://cbea.ms/git-commit/][Chris Beams]]: How to write a git commit? (article)
+  + [[https://www.youtube.com/watch?v=_zfvQkJsYwI][SystemCrafters]]: Instruction to Magit Git interface (video)
+  + [[https://www.youtube.com/watch?v=qPfJoeQCIvA][SystemCrafters]]: 9 Techniques to Boost Your Magit Workflow (video)
+
+#+begin_src emacs-lisp
+(use-package magit
+  :bind ("C-x g" . magit-status)
+  :diminish magit-minor-mode
+  :hook ((git-commit-mode . (lambda () (setq fill-column 72)))
+         (after-save . magit-after-save-refresh-status))
+  :mode ("/\\.gitmodules\\'" . conf-mode)
+  :custom
+  (magit-diff-hide-trailing-cr-characters t)
+  (git-commit-summary-max-length 50))
+#+end_src
+
+*** Projectile
+
+The [[https://github.com/bbatsov/projectile][projectile]] package provides multiple features operating on a project-level.
+This is a useful alternative to using built-in Emacs functionality ~C-x C-f~ to
+find a specific file.
+
+#+begin_src emacs-lisp
+(use-package projectile
+  :config
+  (projectile-mode +1)
+  (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
+#+end_src
