@@ -1,8 +1,9 @@
 #+TITLE: Semacs Configuration
 #+AUTHOR: Vsevolod Prudius | Sobaka Dev
-#+EMAIL: seva@sevap.ru
+#+EMAIL: i@sevap.ru
 #+DATE: Friday, May 30, 2025
 #+PROPERTY: header-args:emacs-lisp :results silent
+
 
 * Introduction
 
@@ -62,8 +63,8 @@ It is recommended that we perform garbage collection when not actively using
 Emacs. Therefore, we perform GC if idle for 30 seconds.(credit: [[https://emacs.stackexchange.com/questions/34342/is-there-any-downside-to-setting-gc-cons-threshold-very-high-and-collecting-ga][StackExchange]])
 
 #+begin_src emacs-lisp
-;; idle garbage collecting
-(run-with-idle-timer 30 t (lambda () (garbage-collect)))
+  ;; idle garbage collecting
+  (run-with-idle-timer 30 t (lambda () (garbage-collect)))
 #+end_src
 
 ** System Management
@@ -100,20 +101,24 @@ following snippet removes these elements from the GUI and replaces the initial
 scratch message when you first open Emacs.
 
 #+begin_src emacs-lisp
-;; suppress noise on startup
-(setq-default inhibit-startup-screen t
-              inhibit-splash-screen t
-              initial-scratch-message ";;Hope you have a good day!
-")
+  ;; suppress noise on startup
+  (setq-default inhibit-startup-screen t
+                inhibit-splash-screen t
+                initial-scratch-message ";;Hope you have a good day!
+  ")
 
-;; remove unwanted elements
-(menu-bar-mode 0)   ; disable the menu bar at the top
-(when (boundp 'x-toolkit-scroll-bars)
-  (scroll-bar-mode 0))
- ; disable visible scrollbar
-(scroll-all-mode 0) ; disable synchronized scrolling of buffers
-(tool-bar-mode 0)   ; disable the toolbar
-(tooltip-mode 0)    ; disable the tooltip
+  ;; remove unwanted elements
+  (menu-bar-mode 0)   ; disable the menu bar at the top
+  (when (boundp 'x-toolkit-scroll-bars)
+    (scroll-bar-mode 0))
+   ; disable visible scrollbar
+  (scroll-all-mode 0) ; disable synchronized scrolling of buffers
+  (tool-bar-mode 0)   ; disable the toolbar
+  (tooltip-mode 0)    ; disable the tooltip
+
+  ;; But let's keep horizontal scroll-bar
+  (require 'mlscroll)
+  (mlscroll-mode)
 #+end_src
 
 *** Set Indentation Style
@@ -273,7 +278,7 @@ The custom function below makes it easy to change the size of your font.
         ;; (set-face-attribute 'default (selected-frame) :height 90)
         ;; (set-face-attribute 'default nil :height 100)
         (message fontspec)))))
-(fonts 10)
+(fonts 15)
 #+end_src
 
 *** Line Numbers
@@ -343,28 +348,29 @@ The following snippet changes how the calendar is generally structured and
 displayed.
 
 #+begin_src emacs-lisp
-;; calendar settings
-(setq-default
- european-calendar-style t
- calendar-date-style 'european
- calendar-week-start-day 1
+  ;; calendar settings
+  (setq-default
+   european-calendar-style t
+   calendar-date-style 'european
+   calendar-week-start-day 1
 
- display-time-24hr-format t
- display-time-day-and-date t
- display-time-string-forms
- '((if (and (not display-time-format) display-time-day-and-date)
-       (format-time-string "%a %b %e " now) "")
-   (format-time-string (or display-time-format
-                           (if display-time-24hr-format "%H:%M" "%-I:%M%p"))
-                       now))
- calendar-time-display-form
- '(24-hours ":" minutes
-            (if time-zone " (") time-zone (if time-zone ")"))
- )
-(setq calendar-latitude 52.36547
-      calendar-longitude 4.81926
-      calendar-location-name "Amsterdam"
-      calendar-time-zone 60)
+   display-time-24hr-format t
+   display-time-day-and-date t
+   display-time-string-forms
+   '((if (and (not display-time-format) display-time-day-and-date)
+         (format-time-string "%a %b %e " now) "")
+     (format-time-string (or display-time-format
+                             (if display-time-24hr-format "%H:%M" "%-I:%M%p"))
+                         now))
+   calendar-time-display-form
+   '(24-hours ":" minutes
+              (if time-zone " (") time-zone (if time-zone ")"))
+   )
+  (setq calendar-latitude 52.36547
+        calendar-longitude 4.81926
+        calendar-location-name "Amsterdam"
+        calendar-time-zone 60)
+ 
 #+end_src
 
 *** Buffer Formatting
@@ -699,7 +705,6 @@ packages can be download by ~yay enchant pkgconf hunspell~.
   + nunspell :: Spell-checker dictionaries
   + enchant :: Wrapper for spelling libraries
   + pkgconf :: Compiler; used by =jinx= to locate =enchant=
-
 Useful commands include:
   + jinx-next / jinx-previous :: Jump to previous/next visible spelling error
   + jinx-correct-all :: Allow user to correct all spelling errors in buffer
@@ -708,7 +713,7 @@ nn
 =org-edit-special= buffer accessed via ~C-c '~ . This is because =jinx= only
 checks text possessing specific face properties (see ~jinx-include-faces~ and
 ~jinx-exclude-faces~). When coding, we are only interested in checking comments
-and docstrings; ~tree-sitter-hl-face:comment~, for example extends this
+and doc strings; ~tree-sitter-hl-face:comment~, for example extends this
 functionality to =.py= files (see [[*Syntax Highlighting][Syntax Highlighting]]). To check a comment, we
 would need to remove =org-block= in ~jinx-exclude-faces~ at the expense of
 checking ALL of the code.
@@ -733,7 +738,7 @@ checking ALL of the code.
                 tree-sitter-hl-face:comment
                 tree-sitter-hl-face:doc)))
 
-  (jinx-languages "en_GB" "ru_RU")
+  (jinx-languages "en_GB", "ru_RU")
   :config
   ;; Quickly save word-at-point to dictionary used by 'jinx'
   (defalias 'jinx-save-word-at-point (kmacro "C-c j c @ RET"))
@@ -744,6 +749,14 @@ checking ALL of the code.
                '(jinx grid (vertico-grid-annotate . 20))))
 #+end_src
 
+#+RESULTS:
+: jinx-save-word-at-point
+
+
+** Writing
+*** Smog
+Smog package can be niceliy used for tex style analysing.
+Check it with M-x smog-check
 
 ** Development
 *** Git
@@ -782,3 +795,34 @@ find a specific file.
   (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
   (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
 #+end_src
+
+** Org Keybindings
+
+#+begin_src emacs-lisp
+;; set load-path for submodules used at mlprograms
+(let ((default-directory (expand-file-name "lisp" user-emacs-directory)))
+  (unless (file-directory-p default-directory)
+    (make-directory default-directory t))
+  (add-to-list 'load-path default-directory)
+  (normal-top-level-add-subdirs-to-load-path))
+
+;; for org sourceblock insertion
+(use-package org-block-extra
+  :load-path "lisp"
+  :bind (:map org-mode-map
+              ("M-p" . org-previous-block)
+              ("M-n" . org-next-block)
+              ("M-P" . org-insert-block-above)
+              ("M-N" . org-insert-block-below)
+              ("M-D" . org-kill-block)
+              ("M-W" . org-copy-block)
+              ("C-c c" . org-execute-block-in-shell)
+              ("C-c e" . org-execute-line-or-region-in-shell)
+              ("C-c M-p" . org-babel-execute-above)
+              ("C-c M-n" . org-babel-execute-below))
+  :hook (before-save . (lambda ()
+                         (when (eq major-mode 'org-mode)
+                           (org-babel-remove-empty-results)))))
+#+end_src
+
+
