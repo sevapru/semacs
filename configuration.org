@@ -76,7 +76,8 @@ and subdirectories when appropriate.
 
 #+begin_src emacs-lisp
 ;; keep .emacs.d clean
-(use-package no-littering)
+(use-package no-littering
+  :demand t)
 #+end_src
 
 *** Move Automatic Customization to Separate File
@@ -86,10 +87,10 @@ at the bottom of the =init.el= config file. To prevent the additional clutter, w
 move these customizations to a separate =automatic-settings.el= file.
 
 #+begin_src emacs-lisp
-;; keep customization settings in a temporary file
+;; keep customization settings in a temporary file (skip loading for speed)
 (setq custom-file "~/.emacs.d/automatic-settings.el")
-(when (file-exists-p custom-file)
-  (load custom-file))
+;; (when (file-exists-p custom-file)
+;;   (load custom-file))
 #+end_src
 
 ** Basic UI Modifications
@@ -117,8 +118,9 @@ scratch message when you first open Emacs.
   (tooltip-mode 0)    ; disable the tooltip
 
   ;; But let's keep horizontal scroll-bar
-  (require 'mlscroll)
-  (mlscroll-mode)
+  (use-package mlscroll
+    :defer t
+    :config (mlscroll-mode))
 #+end_src
 
 *** Set Indentation Style
@@ -202,6 +204,7 @@ Visual cues are useful for locating the cursor or parentheses pairs.
 
 ;; flash location of cursor when moved
 (use-package beacon
+  :defer 2
   :config (beacon-mode 1))
 
 ;; paired parentheses
@@ -304,7 +307,7 @@ The custom function below makes it easy to change the size of your font.
 #+begin_src emacs-lisp
 ;; highlight occurences of the same thing in buffer
 (use-package highlight-thing
-  :demand t
+  :defer t
   :hook ((prog-mode . highlight-thing-mode)
          (org-mode . highlight-thing-mode))
   :config
@@ -476,6 +479,7 @@ current buffer in the current window.
 #+begin_src emacs-lisp
 ;; alternative to built-in Emacs help
 (use-package helpful
+  :defer t
   :bind (("C-h j" . helpful-at-point)
          ("C-h f" . helpful-callable)
          ("C-h v" . helpful-variable)
@@ -649,6 +653,7 @@ extra configuration (credit: [[https://www.youtube.com/watch?v=J0OaRy85MOo][Syst
 (savehist-mode 1) ;; save minibuffer history for vertico
 
 (use-package vertico
+  :demand t
   :init
   (vertico-mode))
 #+end_src
@@ -660,6 +665,7 @@ additional information to minibuffer completions (credit: [[https://www.youtube.
 
 #+begin_src emacs-lisp
 (use-package marginalia
+  :demand t
   ;; either bind `marginalia-cycle` globally or only in the minibuffer
   :bind (("M-A" . marginalia-cycle)
          :map minibuffer-local-map
@@ -680,6 +686,7 @@ the full name of the item you are looking for.
 
 #+begin_src emacs-lisp
 (use-package orderless
+  :demand t
   :init
   ;; configure a custom style dispatcher (see the Consult wiki)
   ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
@@ -720,6 +727,7 @@ checking ALL of the code.
 
 #+begin_src elisp
 (use-package jinx
+  :defer t
   :hook (org-mode text-mode prog-mode conf-mode)
   :bind (("C-c j c" . jinx-correct)
          ("C-c j a" . jinx-correct-all)
@@ -772,6 +780,7 @@ To learn the fundamentals of magit, please see the following links:
 
 #+begin_src emacs-lisp
 (use-package magit
+  :defer t
   :bind ("C-x g" . magit-status)
   :diminish magit-minor-mode
   :hook ((git-commit-mode . (lambda () (setq fill-column 72)))
@@ -790,6 +799,7 @@ find a specific file.
 
 #+begin_src emacs-lisp
 (use-package projectile
+  :defer 2
   :config
   (projectile-mode +1)
   (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)

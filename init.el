@@ -22,17 +22,21 @@
       package-archive-priorities
       '(("melpa"    . 7)
         ("gnu elpa" . 5)
-        ("nongnu"   . 4)))
+        ("nongnu"   . 4))
+      ;; Speed up package loading
+      package-quickstart t
+      package-native-compile t)
 
 
 ;; comment out if you dont want to refresh every time you start emacs
-;; helps if you modifying your configuration. 
-(package-refresh-contents t)
+;; helps if you modifying your configuration.
+;; (package-refresh-contents t)
 
 ;; Ensure the package list have been populated
 (require 'package)
-(unless package-archive-contents
-  (package-refresh-contents))
+;; Skip package refresh and automatic-settings loading on startup for speed
+;; (unless package-archive-contents
+;;   (package-refresh-contents))
 
 ;; use 'use-package' to install packages/dependencies
 (unless (package-installed-p 'use-package)
@@ -51,16 +55,42 @@
 
 ;; make sure you have correct environment variables when running emacs --daemon
 (use-package exec-path-from-shell
+  :defer t
+  :init
+  ;; Only initialize if not already done
+  (unless (getenv "PATH")
+    (exec-path-from-shell-initialize))
   :config
-  (exec-path-from-shell-initialize)
   (add-to-list 'exec-path (expand-file-name "~/.virtualenvs/emacs-tools/bin")))
 
 
 ;; load configurations from narrative
 ;; will create <narrative>.el file
-(use-package org)
-(org-babel-load-file
- (expand-file-name "configuration.org"
-                   user-emacs-directory))
+;; Load compiled version if available and newer than source
+(let* ((org-file (expand-file-name "configuration.org" user-emacs-directory))
+       (el-file (expand-file-name "configuration.el" user-emacs-directory))
+       (elc-file (expand-file-name "configuration.elc" user-emacs-directory))
+       (makefile (expand-file-name "Makefile" user-emacs-directory)))
+  (cond
+   ;; If compiled file exists and is newer, load it
+   ((and (file-exists-p elc-file)
+         (file-newer-than-file-p elc-file org-file))
+    (load elc-file))
+   ;; If .el file exists and is newer than .org, load it
+   ((and (file-exists-p el-file)
+         (file-newer-than-file-p el-file org-file))
+    (load el-file))
+   ;; Otherwise, auto-compile if Makefile exists, or tangle manually
+   (t
+    (if (file-exists-p makefile)
+        (progn
+          (message "Configuration outdated, running auto-compile...")
+          (shell-command "cd ~/.emacs.d && make auto-compile")
+          (if (file-exists-p elc-file)
+              (load elc-file)
+            (load el-file)))
+      ;; Fallback to manual tangling
+      (use-package org :defer nil)
+      (org-babel-load-file org-file)))))
 
 ;;; init.el ends here

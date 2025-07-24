@@ -6,3 +6,4 @@
 /eln-cache
 /emacs-backups
 *~
+*.elc
