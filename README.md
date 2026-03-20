@@ -1,72 +1,94 @@
 # semacs
 
-My Emacs. Literate config via `configuration.org`, compiled for fast startup, with opencode TUI integration.
+A batteries-included Emacs configuration. Literate org-mode source, byte-compiled for fast startup, with built-in AI coding assistant integration ([opencode](https://opencode.ai) + [claude-code](https://github.com/yuya373/claude-code-emacs)).
 
-<img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/4c25fd67-f41a-4527-a24f-0f1ec485b6bc" />
+<img width="2560" height="1440" alt="semacs screenshot" src="https://github.com/user-attachments/assets/4c25fd67-f41a-4527-a24f-0f1ec485b6bc" />
 
-## Fresh Install
+## Install
 
-```bash
-git clone git@github.com:sevapru/semacs.git ~/.emacs.d
-cd ~/.emacs.d
-bash install.sh
+```sh
+curl -fsSL https://raw.githubusercontent.com/sevapru/semacs/main/get.sh | bash
 ```
 
-The script:
-1. Installs system deps (`libvterm-dev`, `cmake`, `libenchant-2-dev`)
-2. Creates `~/.emacs.d/.env` from the template (fill in your API keys)
-3. Symlinks `opencode/` → `~/.config/opencode/` (config, skills, AGENTS.md)
-4. Installs the opencode binary (`~/.opencode/bin/opencode`)
-5. Installs all Emacs packages and byte-compiles the config
+Then add your API keys:
 
-After install, fill in credentials:
-
-```bash
+```sh
 $EDITOR ~/.emacs.d/.env
 ```
 
-Then start Emacs. Run opencode with `M-x opencode`.
+Start Emacs. That's it.
 
-## Credentials (.env)
+## Requirements
 
-API keys live in `~/.emacs.d/.env` — gitignored, store it in your vault.
+- Emacs 28+
+- Git
+- `apt` / `pacman` / `brew` (for system deps)
 
-```bash
-# .env (copy from .env.example, never commit)
-ANTHROPIC_API_KEY=sk-ant-...
-SOBAKA_API_KEY=sk-...
+The installer handles everything else: system libraries, Emacs packages, byte-compilation, and AI tool setup.
+
+## What's included
+
+| Area | Package(s) |
+|---|---|
+| Completion | `vertico`, `corfu`, `cape`, `orderless`, `marginalia` |
+| Navigation | `consult`, `embark`, `avy`, `projectile` |
+| Git | `magit`, `diff-hl` |
+| LSP | `eglot` |
+| Terminal | `vterm` |
+| AI | `claude-code`, `opencode` (vterm TUI) |
+| Spell check | `jinx` |
+| Theme | `solarized-theme`, `doom-modeline`, `nerd-icons` |
+| Editing | `vundo`, `wgrep`, `which-key`, `beacon` |
+
+## AI tools
+
+### Claude Code (`C-c C-a`)
+
+`claude-code` runs project-isolated Claude Code sessions in vterm:
+
+```
+C-c C-a         open transient menu
+M-x claude-code-run   start a session
 ```
 
-Emacs loads these into its process environment at startup so opencode and shell commands pick them up automatically.
+Requires the [Claude Code CLI](https://claude.ai/code) installed to `~/.local/bin/claude`.
 
-## Opencode
+### Opencode (`M-x opencode`)
 
-The `opencode/` directory is versioned in this repo and symlinked to `~/.config/opencode/`:
+`opencode` launches the opencode TUI in a dedicated vterm buffer. Config lives in `opencode/` and is symlinked to `~/.config/opencode/` at install time.
 
-| File | Purpose |
-|---|---|
-| `opencode/opencode.json` | Provider config (sobaka provider, `$SOBAKA_API_KEY`) |
-| `opencode/AGENTS.md` | Global agent rules (identity, code style) |
-| `opencode/skills/*.md` | Domain skills (business, robotics, infra, etc.) |
+## Credentials
 
-To re-run the symlink setup: `make setup-opencode`
+API keys go in `~/.emacs.d/.env` — gitignored, copy from vault:
 
-## New Machine (snoek etc.)
+```sh
+# ~/.emacs.d/.env
+ANTHROPIC_API_KEY=sk-ant-...
+SOBAKA_API_KEY=sk-...
 
-```bash
-git clone git@github.com:sevapru/semacs.git ~/.emacs.d
+# Optional: override calendar location (defaults: Amsterdam)
+# CALENDAR_LATITUDE=52.36547
+# CALENDAR_LONGITUDE=4.81926
+# CALENDAR_LOCATION=Amsterdam
+# CALENDAR_TZ_OFFSET=60
+```
+
+Emacs loads `.env` at startup and injects vars into its process environment.
+
+## Updating
+
+```sh
 cd ~/.emacs.d
-bash install.sh
-# paste credentials from vault into ~/.emacs.d/.env
+git pull
+make all
 ```
 
 ## Makefile
 
 ```
 make all              # install packages + compile (default)
-make install-packages # install Emacs packages from MELPA/ELPA
-make tangle           # tangle configuration.org → configuration.el
-make compile          # tangle + byte-compile
+make compile          # tangle configuration.org → byte-compile
+make tangle           # tangle only
 make setup-opencode   # re-create ~/.config/opencode/ symlinks
 make test             # benchmark startup time
 make clean            # remove generated .el/.elc files
@@ -76,19 +98,20 @@ make clean            # remove generated .el/.elc files
 
 ```
 .emacs.d/
-├── init.el              # bootstrap: loads compiled config or tangles on-the-fly
+├── init.el              # bootstrap loader
 ├── configuration.org    # literate config (source of truth)
+├── get.sh               # curl installer
 ├── install.sh           # fresh-install script
 ├── Makefile             # build system
-├── .env.example         # credentials template (committed)
-├── .env                 # real credentials (gitignored, from vault)
-├── opencode/            # versioned opencode config
-│   ├── opencode.json    # provider config ($SOBAKA_API_KEY)
-│   ├── AGENTS.md        # global agent rules
-│   └── skills/          # domain skill files
+├── .env.example         # credentials template
+├── opencode/            # opencode config (symlinked to ~/.config/opencode/)
+│   ├── opencode.json
+│   ├── AGENTS.md
+│   └── skills/
 └── lisp/                # local elisp packages
     └── org-block-extra.el
 ```
 
-Have a good day,
-Seva
+## License
+
+MIT
