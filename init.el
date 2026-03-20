@@ -34,9 +34,10 @@
 
 ;; Ensure the package list have been populated
 (require 'package)
+(package-initialize)
 ;; Skip package refresh and automatic-settings loading on startup for speed
-;; (unless package-archive-contents
-;;   (package-refresh-contents))
+(unless package-archive-contents
+   (package-refresh-contents))
 
 ;; use 'use-package' to install packages/dependencies
 (unless (package-installed-p 'use-package)
@@ -61,7 +62,8 @@
   (unless (getenv "PATH")
     (exec-path-from-shell-initialize))
   :config
-  (add-to-list 'exec-path (expand-file-name "~/.virtualenvs/emacs-tools/bin")))
+  (add-to-list 'exec-path (expand-file-name "~/.virtualenvs/emacs-tools/bin"))
+  (add-to-list 'exec-path (expand-file-name "~/.opencode/bin")))
 
 
 ;; load configurations from narrative
