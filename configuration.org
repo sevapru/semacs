@@ -93,6 +93,32 @@ move these customizations to a separate =automatic-settings.el= file.
 ;;   (load custom-file))
 #+end_src
 
+*** Load Credentials from .env
+
+API keys and secrets live in =~/.emacs.d/.env= (gitignored, stored in vault).
+This block reads the file on startup and injects each =KEY=value= pair into
+Emacs's process environment so child processes (opencode, shell commands) pick
+them up automatically.
+
+#+begin_src emacs-lisp
+(defun my/load-dotenv (&optional file)
+  "Load KEY=VALUE pairs from FILE (default ~/.emacs.d/.env) into `process-environment'."
+  (let ((env-file (or file (expand-file-name ".env" user-emacs-directory))))
+    (when (file-exists-p env-file)
+      (with-temp-buffer
+        (insert-file-contents env-file)
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((line (string-trim (buffer-substring (line-beginning-position)
+                                                     (line-end-position)))))
+            (when (and (string-match "^\\([A-Za-z_][A-Za-z0-9_]*\\)=\\(.*\\)$" line)
+                       (not (string-prefix-p "#" line)))
+              (setenv (match-string 1 line) (match-string 2 line))))
+          (forward-line 1))))))
+
+(my/load-dotenv)
+#+end_src
+
 ** Basic UI Modifications
 *** Remove UI Elements
 
@@ -102,11 +128,73 @@ following snippet removes these elements from the GUI and replaces the initial
 scratch message when you first open Emacs.
 
 #+begin_src emacs-lisp
+ ;; Helper functions for date formatting
+(defun format-date-with-ordinal ()
+  "Return current date as string with ordinal suffix e.g. 'Thursday, 19th March 2026'."
+  (let* ((day (string-to-number (format-time-string "%e")))
+         (suffix (cond ((memq day '(1 21 31)) "st")
+                       ((memq day '(2 22)) "nd")
+                       ((memq day '(3 23)) "rd")
+                       (t "th")))
+         (day-name (format-time-string "%A"))
+         (month (format-time-string "%B"))
+         (year (format-time-string "%Y")))
+    (format "%s, %d%s %s %s" day-name day suffix month year)))
+
+(defun generate-org-header ()
+    "Generate a formatted org-mode header with dynamic date and time."
+    (let* ((formatted-date (format-date-with-ordinal))
+           (time-with-zone (format-time-string "%H:%M:%S %Z"))
+           (iso-date (format-time-string "%Y-%m-%d"))
+           (timestamp (format-time-string "<%Y-%m-%d %a %H:%M>"))
+           (author-name "Vsevolod Prudius")
+           (author-email "i@sevap.ru"))
+      (concat
+       ";; Hope you have a good day!\n"
+       ";; " formatted-date " | " time-with-zone "\n\n"
+       "#+TITLE: Document Title\n"
+       "#+AUTHOR: " author-name "\n"
+       "#+EMAIL: <" author-email ">\n"
+       "#+DATE: " formatted-date "\n"
+       "#+TIME: " time-with-zone "\n"
+       "#+TIMESTAMP: " timestamp "\n"
+       "#+CREATED: " iso-date "\n"
+       "#+MODIFIED: \n"
+       "\n"
+       ";; Metadata and Export Settings\n"
+       "#+DESCRIPTION: Document description here\n"
+       "#+KEYWORDS: emacs, org-mode, documentation\n"
+       "#+LANGUAGE: en\n"
+       "#+OPTIONS: toc:t num:t H:4 ^:nil _:nil tags:t\n"
+       "#+STARTUP: content fold\n"
+       "#+EXPORT_SELECT_TAGS: export\n"
+       "#+EXPORT_EXCLUDE_TAGS: noexport draft\n"
+       "#+FILETAGS: :project:\n"
+       "\n"
+       ";; HTML Export Settings\n"
+       "#+HTML_HEAD: <link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\" />\n"
+       "#+HTML_HEAD_EXTRA: <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n"
+       "#+HTML_LINK_HOME: index.html\n"
+       "#+HTML_LINK_UP: ../index.html\n"
+       "\n"
+       ";; LaTeX/PDF Export Settings\n"
+       "#+LATEX_CLASS: article\n"
+       "#+LATEX_CLASS_OPTIONS: [11pt,a4paper]\n"
+       "#+LATEX_HEADER: \\usepackage{hyperref}\n"
+       "#+LATEX_HEADER: \\hypersetup{colorlinks=true,linkcolor=blue}\n"
+       "\n"
+       ";; Additional Hidden Tags\n"
+       "#+PROPERTY: header-args :results silent\n"
+       "#+TODO: TODO(t) INPROGRESS(i) WAITING(w) | DONE(d) CANCELLED(c)\n"
+       "#+PRIORITIES: A B C\n"
+       "#+CATEGORY: General\n"
+       "\n"
+       "* \n")))
+
   ;; suppress noise on startup
-  (setq-default inhibit-startup-screen t
+(setq-default inhibit-startup-screen t
                 inhibit-splash-screen t
-                initial-scratch-message ";;Hope you have a good day!
-  ")
+                initial-scratch-message (generate-org-header))
 
   ;; remove unwanted elements
   (menu-bar-mode 0)   ; disable the menu bar at the top
@@ -119,7 +207,6 @@ scratch message when you first open Emacs.
 
   ;; But let's keep horizontal scroll-bar
   (use-package mlscroll
-    :defer t
     :config (mlscroll-mode))
 #+end_src
 
@@ -214,6 +301,43 @@ Visual cues are useful for locating the cursor or parentheses pairs.
 (show-paren-mode 1)
 (setq-default show-paren-style 'parenthesis
               show-paren-when-point-in-periphery t)
+#+end_src
+
+** Multilanguage Keybindings
+
+When typing in a non-Latin script (e.g. Russian/Cyrillic) at the OS level, Emacs
+receives the Cyrillic character codes and keybindings stop working. The fix maps
+each foreign character to the Latin character at the same physical key position, so
+=C-ф= becomes =C-a=, =M-в= becomes =M-d=, etc. — regardless of OS layout.
+
+The mapping covers the full Russian ЙЦУКЕН → QWERTY layout for bare keys and all
+common modifier combinations (Control, Meta, Control-Meta).
+
+#+begin_src emacs-lisp
+(defun my/setup-multilang-keybindings ()
+  "Translate Cyrillic key events to their QWERTY positional equivalents.
+Allows all keybindings to work regardless of the active OS keyboard layout."
+  (let ((pairs
+         '(;; top row
+           (?й . ?q) (?ц . ?w) (?у . ?e) (?к . ?r) (?е . ?t)
+           (?н . ?y) (?г . ?u) (?ш . ?i) (?щ . ?o) (?з . ?p)
+           (?х . ?\[) (?ъ . ?\])
+           ;; home row
+           (?ф . ?a) (?ы . ?s) (?в . ?d) (?а . ?f) (?п . ?g)
+           (?р . ?h) (?о . ?j) (?л . ?k) (?д . ?l) (?ж . ?\;)
+           (?э . ?\')
+           ;; bottom row
+           (?я . ?z) (?ч . ?x) (?с . ?c) (?м . ?v) (?и . ?b)
+           (?т . ?n) (?ь . ?m) (?б . ?\,) (?ю . ?\.))))
+    (dolist (pair pairs)
+      (let ((ru (car pair))
+            (en (cdr pair)))
+        (dolist (mod '(() (control) (meta) (control meta)))
+          (define-key key-translation-map
+            (vector (append mod (list ru)))
+            (vector (append mod (list en)))))))))
+
+(my/setup-multilang-keybindings)
 #+end_src
 
 ** Theming
@@ -400,7 +524,7 @@ We define several configurations used across all buffers, and includes:
  debug-on-error nil
 
  ;; structure settings
- fill-column 100
+ fill-column 80
  message-log-max 2000
 
  sentence-end-double-space nil
@@ -466,7 +590,7 @@ current buffer in the current window.
 #+begin_src emacs-lisp
 ;; man page settings
 (setq-default
- Man-width 100
+ Man-width 80
  Man-notify-method 'pushy
  )
 #+end_src
@@ -746,7 +870,7 @@ checking ALL of the code.
                 tree-sitter-hl-face:comment
                 tree-sitter-hl-face:doc)))
 
-  (jinx-languages "en_GB", "ru_RU")
+  (jinx-languages "en_GB" "ru_RU")
   :config
   ;; Quickly save word-at-point to dictionary used by 'jinx'
   (defalias 'jinx-save-word-at-point (kmacro "C-c j c @ RET"))
@@ -829,10 +953,194 @@ find a specific file.
               ("C-c c" . org-execute-block-in-shell)
               ("C-c e" . org-execute-line-or-region-in-shell)
               ("C-c M-p" . org-babel-execute-above)
-              ("C-c M-n" . org-babel-execute-below))
-  :hook (before-save . (lambda ()
-                         (when (eq major-mode 'org-mode)
-                           (org-babel-remove-empty-results)))))
+              ("C-c M-n" . org-babel-execute-below)))
+;;  :hook (before-save . (lambda ()
+  ;;                       (when (eq major-mode 'org-mode)
+    ;;                       (org-babel-remove-empty-results)))))
 #+end_src
 
+* Pro Packages
+
+** which-key
+
+Shows available key bindings after pressing a prefix key. Zero friction, universal value.
+
+#+begin_src emacs-lisp
+(use-package which-key
+  :demand t
+  :config
+  (which-key-mode)
+  (setq which-key-idle-delay 0.5))
+#+end_src
+
+** consult
+
+Supercharges vertico with live preview, project-wide grep, buffer switching, etc.
+Pairs perfectly with the existing vertico + orderless stack.
+
+#+begin_src emacs-lisp
+(use-package consult
+  :defer t
+  :bind (("C-x b"   . consult-buffer)
+         ("C-x C-r" . consult-recent-file)
+         ("M-g g"   . consult-goto-line)
+         ("M-g i"   . consult-imenu)
+         ("M-s g"   . consult-grep)
+         ("M-s r"   . consult-ripgrep)
+         ("M-s l"   . consult-line)
+         ("C-c s"   . consult-line))
+  :config
+  (setq consult-project-function #'projectile-project-root))
+#+end_src
+
+** embark
+
+Right-click-like context actions on any candidate in the minibuffer or at point.
+
+#+begin_src emacs-lisp
+(use-package embark
+  :defer t
+  :bind (("C-." . embark-act)
+         ("C-;" . embark-dwim)
+         ("C-h B" . embark-bindings)))
+
+(use-package embark-consult
+  :after (embark consult)
+  :hook (embark-collect-mode . consult-preview-at-point-mode))
+#+end_src
+
+** corfu + cape
+
+corfu gives a lightweight in-buffer completion popup. cape is already installed
+but unconfigured — this wires it up properly.
+
+#+begin_src emacs-lisp
+(use-package corfu
+  :demand t
+  :custom
+  (corfu-auto t)
+  (corfu-auto-delay 0.2)
+  (corfu-quit-no-match t)
+  :init
+  (global-corfu-mode))
+
+(use-package cape
+  :demand t
+  :init
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-keyword))
+#+end_src
+
+** eglot
+
+Zero-dependency LSP client built into Emacs 29+. Enables go-to-def, find-refs,
+rename, and diagnostics for any LSP-supported language.
+
+#+begin_src emacs-lisp
+(use-package eglot
+  :defer t
+  :hook ((python-mode     . eglot-ensure)
+         (python-ts-mode  . eglot-ensure)
+         (js-mode         . eglot-ensure)
+         (typescript-mode . eglot-ensure)
+         (rust-mode       . eglot-ensure)
+         (go-mode         . eglot-ensure))
+  :custom
+  (eglot-autoshutdown t)
+  (eglot-ignored-server-capabilities '(:documentHighlightProvider)))
+#+end_src
+
+** diff-hl
+
+Shows +/- in the margin for changed lines. Complements magit perfectly.
+
+#+begin_src emacs-lisp
+(use-package diff-hl
+  :demand t
+  :config
+  (global-diff-hl-mode)
+  (diff-hl-flydiff-mode)
+  :hook ((magit-pre-refresh  . diff-hl-magit-pre-refresh)
+         (magit-post-refresh . diff-hl-magit-post-refresh)))
+#+end_src
+
+** avy
+
+Jump to any visible character with 2-3 keystrokes. Navigation superpower.
+
+#+begin_src emacs-lisp
+(use-package avy
+  :defer t
+  :bind (("C-c a" . avy-goto-char-2)
+         ("M-g w" . avy-goto-word-1)
+         ("M-g l" . avy-goto-line)))
+#+end_src
+
+** doom-modeline
+
+Rich status bar with icons, git branch, LSP status, and encoding info.
+Requires ~nerd-icons~ and running =M-x nerd-icons-install-fonts= once.
+
+#+begin_src emacs-lisp
+(use-package nerd-icons :defer t)
+
+(use-package doom-modeline
+  :demand t
+  :init (doom-modeline-mode 1)
+  :custom
+  (doom-modeline-height 25)
+  (doom-modeline-icon t)
+  (doom-modeline-project-detection 'projectile))
+#+end_src
+
+** vundo
+
+Navigate undo history as a visual tree. Built on Emacs native undo, no data loss.
+
+#+begin_src emacs-lisp
+(use-package vundo
+  :defer t
+  :bind ("C-x u" . vundo))
+#+end_src
+
+** wgrep
+
+Edit grep/consult search results directly in buffer, apply changes to multiple files.
+
+#+begin_src emacs-lisp
+(use-package wgrep :defer t)
+#+end_src
+
+** vterm
+
+Full-featured terminal emulator needed for TUI applications like opencode.
+Requires =libvterm= system library (=sudo apt-get install libvterm-dev cmake=).
+
+#+begin_src emacs-lisp
+(use-package vterm
+  :defer t
+  :custom
+  (vterm-max-scrollback 10000)
+  (vterm-kill-buffer-on-exit t))
+#+end_src
+
+** Opencode Buffer
+
+=M-x opencode= launches the opencode TUI in a dedicated vterm buffer, with
+credentials loaded from =~/.emacs.d/.env= at Emacs startup (see =my/load-dotenv=).
+Reuses an existing session if one is running.
+
+#+begin_src emacs-lisp
+(defun opencode ()
+  "Launch opencode in a dedicated vterm buffer, reusing existing session."
+  (interactive)
+  (let ((buf-name "*opencode*"))
+    (if (get-buffer buf-name)
+        (switch-to-buffer buf-name)
+      (let ((vterm-shell (executable-find "opencode")))
+        (unless vterm-shell
+          (user-error "opencode not found in PATH — install from https://opencode.ai"))
+        (vterm buf-name)))))
+#+end_src
 
