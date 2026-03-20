@@ -88,7 +88,7 @@ move these customizations to a separate =automatic-settings.el= file.
 
 #+begin_src emacs-lisp
 ;; keep customization settings in a temporary file (skip loading for speed)
-(setq custom-file "~/.emacs.d/automatic-settings.el")
+(setq custom-file (expand-file-name "automatic-settings.el" user-emacs-directory))
 ;; (when (file-exists-p custom-file)
 ;;   (load custom-file))
 #+end_src
@@ -492,10 +492,10 @@ displayed.
    '(24-hours ":" minutes
               (if time-zone " (") time-zone (if time-zone ")"))
    )
-  (setq calendar-latitude 52.36547
-        calendar-longitude 4.81926
-        calendar-location-name "Amsterdam"
-        calendar-time-zone 60)
+  (setq calendar-latitude    (string-to-number (or (getenv "CALENDAR_LATITUDE")  "52.36547"))
+        calendar-longitude   (string-to-number (or (getenv "CALENDAR_LONGITUDE") "4.81926"))
+        calendar-location-name (or (getenv "CALENDAR_LOCATION") "Amsterdam")
+        calendar-time-zone   (string-to-number (or (getenv "CALENDAR_TZ_OFFSET") "60")))
  
 #+end_src
 
@@ -535,7 +535,7 @@ We define several configurations used across all buffers, and includes:
  kept-old-versions 2
  version-control t
  vc-make-backup-files t
- backup-directory-alist '((".*" . "~/.emacs.d/emacs-backups"))
+ backup-directory-alist `((".*" . ,(expand-file-name "emacs-backups" user-emacs-directory)))
 
  ;; ediff settings
  ediff-split-window-function 'split-window-horizontally
@@ -572,7 +572,7 @@ save sudo passwords as a [[https://docs.fileformat.com/misc/gpg/#:~:text=Extract
 #+begin_src emacs-lisp
 ;; prevent storage of sudo passwords in plaintext
 (setq-default
- auth-sources '("~/.emacs.0/.authinfo.gpg")
+ auth-sources `(,(expand-file-name ".authinfo.gpg" user-emacs-directory))
  auth-source-save-behavior nil
  )
 #+end_src
