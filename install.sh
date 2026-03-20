@@ -4,7 +4,6 @@
 set -euo pipefail
 
 EMACS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OPENCODE_BIN="$HOME/.opencode/bin/opencode"
 NO_OPENCODE=0
 NO_SYSTEM_DEPS=0
 
@@ -45,30 +44,14 @@ fi
 
 # ── 3. opencode global config symlinks ──────────────────────────────────────
 log "Setting up ~/.config/opencode/ symlinks..."
-mkdir -p "$HOME/.config/opencode/skills"
-
-link() {
-  local src="$1" dst="$2"
-  if [[ -e "$dst" && ! -L "$dst" ]]; then
-    warn "$dst exists and is not a symlink — backing up to ${dst}.bak"
-    mv "$dst" "${dst}.bak"
-  fi
-  ln -sf "$src" "$dst"
-}
-
-link "$EMACS_DIR/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
-link "$EMACS_DIR/opencode/AGENTS.md"     "$HOME/.config/opencode/AGENTS.md"
-
-for f in "$EMACS_DIR/opencode/skills/"*.md; do
-  link "$f" "$HOME/.config/opencode/skills/$(basename "$f")"
-done
-
-log "  → ~/.config/opencode/ is now symlinked to $EMACS_DIR/opencode/"
+make -C "$EMACS_DIR" setup-opencode
 
 # ── 4. opencode binary ──────────────────────────────────────────────────────
 if [[ "$NO_OPENCODE" -eq 0 ]]; then
-  if command -v opencode &>/dev/null || [[ -x "$OPENCODE_BIN" ]]; then
-    log "opencode already installed: $(command -v opencode || echo "$OPENCODE_BIN")"
+  OPENCODE_BIN="$HOME/.opencode/bin/opencode"
+  OPENCODE_CMD="$(command -v opencode 2>/dev/null || echo "")"
+  if [[ -n "$OPENCODE_CMD" || -x "$OPENCODE_BIN" ]]; then
+    log "opencode already installed: ${OPENCODE_CMD:-$OPENCODE_BIN}"
   else
     log "Installing opencode..."
     curl -fsSL https://opencode.ai/install | bash
@@ -79,8 +62,7 @@ fi
 
 # ── 5. Emacs packages + compile ─────────────────────────────────────────────
 log "Installing Emacs packages and compiling configuration..."
-cd "$EMACS_DIR"
-make all
+make -C "$EMACS_DIR" all
 
 log ""
 log "Done! Start Emacs and run M-x opencode."

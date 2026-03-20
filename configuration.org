@@ -111,8 +111,7 @@ them up automatically.
         (while (not (eobp))
           (let ((line (string-trim (buffer-substring (line-beginning-position)
                                                      (line-end-position)))))
-            (when (and (string-match "^\\([A-Za-z_][A-Za-z0-9_]*\\)=\\(.*\\)$" line)
-                       (not (string-prefix-p "#" line)))
+            (when (string-match "^\\([A-Za-z_][A-Za-z0-9_]*\\)=\\(.*\\)$" line)
               (setenv (match-string 1 line) (match-string 2 line))))
           (forward-line 1))))))
 
@@ -1135,11 +1134,12 @@ Reuses an existing session if one is running.
 
 #+begin_src emacs-lisp
 (defun opencode ()
-  "Launch opencode in a dedicated vterm buffer, reusing existing session."
+  "Launch opencode in a dedicated vterm buffer, reusing existing live session."
   (interactive)
-  (let ((buf-name "*opencode*"))
-    (if (get-buffer buf-name)
-        (switch-to-buffer buf-name)
+  (let ((buf-name "*opencode*")
+        (buf (get-buffer "*opencode*")))
+    (if (and buf (get-buffer-process buf))
+        (switch-to-buffer buf)
       (let ((vterm-shell (executable-find "opencode")))
         (unless vterm-shell
           (user-error "opencode not found in PATH — install from https://opencode.ai"))
