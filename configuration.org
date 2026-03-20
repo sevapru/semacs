@@ -2,7 +2,7 @@
 #+AUTHOR: Vsevolod Prudius | Sobaka Dev
 #+EMAIL: i@sevap.ru
 #+DATE: Friday, May 30, 2025
-#+PROPERTY: header-args:emacs-lisp :results silent
+#+PROPERTY: header-args:emacs-lisp :tangle configuration.el :results silent
 
 
 * Introduction
@@ -1124,6 +1124,19 @@ Requires =libvterm= system library (=sudo apt-get install libvterm-dev cmake=).
   :custom
   (vterm-max-scrollback 10000)
   (vterm-kill-buffer-on-exit t))
+#+end_src
+
+** Claude Code
+
+[[https://github.com/yuya373/claude-code-emacs][claude-code]] integrates the Claude Code CLI into Emacs via vterm, with
+project-isolated sessions and a transient menu.
+
+#+begin_src emacs-lisp
+(use-package claude-code
+  :after vterm
+  :config
+  (setq claude-code-executable (expand-file-name "~/.local/bin/claude"))
+  :bind ("C-c C-a" . claude-code-transient))
 #+end_src
 
 ** Opencode Buffer

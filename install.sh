@@ -21,7 +21,7 @@ warn() { echo "[semacs] WARNING: $*" >&2; }
 if [[ "$NO_SYSTEM_DEPS" -eq 0 ]]; then
   if command -v apt-get &>/dev/null; then
     log "Installing system deps (libvterm-dev, cmake)..."
-    sudo apt-get install -y libvterm-dev cmake libenchant-2-dev
+    sudo apt-get install -y libvterm-dev cmake libenchant-2-dev libtool
   elif command -v pacman &>/dev/null; then
     log "Installing system deps (libvterm, cmake, enchant)..."
     sudo pacman -S --noconfirm libvterm cmake enchant
