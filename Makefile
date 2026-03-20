@@ -7,7 +7,7 @@ CONFIG_ELC := configuration.elc
 INIT_EL := init.el
 
 # Extract packages from configuration.org dynamically (only actual use-package calls)
-PACKAGES := $(shell grep 'use-package' configuration.org | grep -o 'use-package [a-zA-Z0-9-]*' | awk '{print $$2}' | sort -u | grep -v '^org$$' | grep -v '^such$$')
+PACKAGES := $(shell grep 'use-package' configuration.org | grep -o 'use-package [a-zA-Z0-9-]*' | awk '{print $$2}' | sort -u | grep -v '^org$$' | grep -v '^such$$' | grep -v '^org-block-extra$$')
 
 .PHONY: all clean install-packages compile tangle test setup-opencode help auto-compile
 
