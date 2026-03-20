@@ -9,7 +9,7 @@ INIT_EL := init.el
 # Extract packages from configuration.org dynamically (only actual use-package calls)
 PACKAGES := $(shell grep 'use-package' configuration.org | grep -o 'use-package [a-zA-Z0-9-]*' | awk '{print $$2}' | sort -u | grep -v '^org$$' | grep -v '^such$$')
 
-.PHONY: all clean install-packages compile test help auto-compile
+.PHONY: all clean install-packages compile tangle test setup-opencode help auto-compile
 
 all: install-packages compile
 
@@ -91,6 +91,25 @@ test:
 	@echo "With configuration:"
 	@time $(EMACS) --batch --load $(INIT_EL) --eval "(kill-emacs)" 2>/dev/null
 
+# Tangle configuration.org → configuration.el (explicit target)
+tangle:
+	@echo "Tangling configuration.org..."
+	$(BATCH) --eval "(progn \
+		(require 'org) \
+		(org-babel-tangle-file \"$(CONFIG_ORG)\"))"
+	@echo "Tangle complete: $(CONFIG_EL)"
+
+# Set up ~/.config/opencode/ symlinks (idempotent)
+setup-opencode:
+	@echo "Setting up ~/.config/opencode/ symlinks..."
+	@mkdir -p ~/.config/opencode/skills
+	@ln -sf "$(CURDIR)/opencode/opencode.json" ~/.config/opencode/opencode.json
+	@ln -sf "$(CURDIR)/opencode/AGENTS.md" ~/.config/opencode/AGENTS.md
+	@for f in $(CURDIR)/opencode/skills/*.md; do \
+		ln -sf "$$f" ~/.config/opencode/skills/$$(basename $$f); \
+	done
+	@echo "Done: ~/.config/opencode/ → $(CURDIR)/opencode/"
+
 # Clean compiled files
 clean:
 	@echo "Cleaning compiled files..."
@@ -105,7 +124,9 @@ help:
 	@echo "  all              - Install packages and compile configuration"
 	@echo "  auto-compile     - Auto-recompile only if configuration.org changed"
 	@echo "  install-packages - Install all required packages"
+	@echo "  tangle           - Tangle configuration.org to configuration.el"
 	@echo "  compile          - Force tangle and compile configuration"
+	@echo "  setup-opencode   - Symlink opencode/ config to ~/.config/opencode/"
 	@echo "  test             - Test startup time"
 	@echo "  clean            - Remove compiled files"
 	@echo "  help             - Show this help"

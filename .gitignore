@@ -7,4 +7,6 @@
 /emacs-backups
 *~
 *.elc
+/configuration.el
+/automatic-settings.el
 .env
