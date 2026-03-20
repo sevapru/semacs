@@ -66,6 +66,7 @@
 ;; regardless of whether exec-path-from-shell loads
 (add-to-list 'exec-path (expand-file-name "~/.virtualenvs/emacs-tools/bin"))
 (add-to-list 'exec-path (expand-file-name "~/.opencode/bin"))
+(add-to-list 'exec-path (expand-file-name "~/.local/bin"))
 
 
 ;; load configurations from narrative

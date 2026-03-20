@@ -24,10 +24,10 @@ if [[ "$NO_SYSTEM_DEPS" -eq 0 ]]; then
     sudo apt-get install -y libvterm-dev cmake libenchant-2-dev libtool
   elif command -v pacman &>/dev/null; then
     log "Installing system deps (libvterm, cmake, enchant)..."
-    sudo pacman -S --noconfirm libvterm cmake enchant
+    sudo pacman -S --noconfirm libvterm cmake enchant libtool
   elif command -v brew &>/dev/null; then
     log "Installing system deps (libvterm, cmake, enchant)..."
-    brew install libvterm cmake enchant
+    brew install libvterm cmake enchant libtool
   else
     warn "Could not detect package manager. Install libvterm and cmake manually."
   fi

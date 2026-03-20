@@ -1134,8 +1134,6 @@ project-isolated sessions and a transient menu.
 #+begin_src emacs-lisp
 (use-package claude-code
   :after vterm
-  :config
-  (setq claude-code-executable (expand-file-name "~/.local/bin/claude"))
   :bind ("C-c C-a" . claude-code-transient))
 #+end_src
 
