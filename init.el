@@ -60,10 +60,12 @@
   :init
   ;; Only initialize if not already done
   (unless (getenv "PATH")
-    (exec-path-from-shell-initialize))
-  :config
-  (add-to-list 'exec-path (expand-file-name "~/.virtualenvs/emacs-tools/bin"))
-  (add-to-list 'exec-path (expand-file-name "~/.opencode/bin")))
+    (exec-path-from-shell-initialize)))
+
+;; unconditionally add local bin dirs so M-x opencode and virtualenvs work
+;; regardless of whether exec-path-from-shell loads
+(add-to-list 'exec-path (expand-file-name "~/.virtualenvs/emacs-tools/bin"))
+(add-to-list 'exec-path (expand-file-name "~/.opencode/bin"))
 
 
 ;; load configurations from narrative

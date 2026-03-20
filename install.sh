@@ -22,13 +22,13 @@ warn() { echo "[semacs] WARNING: $*" >&2; }
 if [[ "$NO_SYSTEM_DEPS" -eq 0 ]]; then
   if command -v apt-get &>/dev/null; then
     log "Installing system deps (libvterm-dev, cmake)..."
-    sudo apt-get install -y libvterm-dev cmake
+    sudo apt-get install -y libvterm-dev cmake libenchant-2-dev
   elif command -v pacman &>/dev/null; then
-    log "Installing system deps (libvterm, cmake)..."
-    sudo pacman -S --noconfirm libvterm cmake
+    log "Installing system deps (libvterm, cmake, enchant)..."
+    sudo pacman -S --noconfirm libvterm cmake enchant
   elif command -v brew &>/dev/null; then
-    log "Installing system deps (libvterm, cmake)..."
-    brew install libvterm cmake
+    log "Installing system deps (libvterm, cmake, enchant)..."
+    brew install libvterm cmake enchant
   else
     warn "Could not detect package manager. Install libvterm and cmake manually."
   fi

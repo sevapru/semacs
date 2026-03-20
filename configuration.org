@@ -851,6 +851,7 @@ checking ALL of the code.
 
 #+begin_src elisp
 (use-package jinx
+  :if (executable-find "enchant-2")
   :defer t
   :hook (org-mode text-mode prog-mode conf-mode)
   :bind (("C-c j c" . jinx-correct)
@@ -1119,6 +1120,7 @@ Requires =libvterm= system library (=sudo apt-get install libvterm-dev cmake=).
 
 #+begin_src emacs-lisp
 (use-package vterm
+  :if (executable-find "cmake")
   :defer t
   :custom
   (vterm-max-scrollback 10000)
